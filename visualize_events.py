@@ -1,6 +1,8 @@
 """
 Plot .edf waveforms, stacked, T0/1/2 events colored in the background.
 
+Alternatively, plot the spectrogram with event brackets colored below.
+
 (T0 is rest, T1 is the onset of left-fist movement or imagery in unilateral
 fist runs, and the both-fists movement or imagery in bilateral hand/foot runs.
 T2 is the right-fist movement or imagery in unilateral fist runs,
@@ -14,8 +16,11 @@ import argparse
 import re
 
 import matplotlib.pyplot as plt
+import matplotlib.transforms as mtransforms
 import mne
 import numpy as np
+
+from utils.fourier import compute_spectrogram_stft
 
 
 # from .venv/lib/python3.13/site-packages/mne/datasets/eegbci/eegbci.py:
@@ -72,9 +77,16 @@ def parse_args():
         "-a", "--all-channels", action="store_true",
         help="All channels mode for a singular input. Warning: lag"
     )
+    parser.add_argument(
+        "-f", "--fourier", action="store_true",
+        help="Fourier decomposition mode: draw a spectrogram of the"
+             " channel instead of the time-domain waveform."
+    )
     args = parser.parse_args()
     if (len(args.input_list) != 1 and args.all_channels):
         parser.error("All channels moode only supports a singular input")
+    if (args.all_channels and args.fourier):
+        parser.error("All channels mode does not support fourier mode")
 
     return args
 
@@ -116,8 +128,55 @@ def plot_event_spans(ax, raw):
             raw.annotations.description):
         color = EVENT_COLORS.get(description, "grey")
         ax.axvspan(
-            onset, onset + duration,
-            color=color, alpha=1.0, zorder=0, linewidth=0,
+            onset,
+            onset + duration,
+            color=color,
+            alpha=1.0,
+            zorder=0,
+            linewidth=0,
+        )
+
+
+def plot_event_brackets(ax, raw):
+    transform = mtransforms.blended_transform_factory(
+        ax.transData, ax.transAxes,
+    )
+    bracket_y = -0.06
+    tick_height = 0.03
+
+    for onset, duration, description in zip(
+            raw.annotations.onset,
+            raw.annotations.duration,
+            raw.annotations.description):
+        if (description == "T0"):
+            continue
+
+        color = EVENT_COLORS.get(description, "grey")
+        start = onset
+        end = onset + duration
+        ax.plot(
+            [start, end],
+            [bracket_y, bracket_y],
+            color=color,
+            linewidth=2,
+            clip_on=False,
+            transform=transform,
+        )
+        ax.plot(
+            [start, start],
+            [bracket_y - tick_height, bracket_y + tick_height],
+            color=color,
+            linewidth=2,
+            clip_on=False,
+            transform=transform,
+        )
+        ax.plot(
+            [end, end],
+            [bracket_y - tick_height, bracket_y + tick_height],
+            color=color,
+            linewidth=2,
+            clip_on=False,
+            transform=transform,
         )
 
 
@@ -139,6 +198,23 @@ def plot_run(ax, path, channel_name):
     twin.set_ylabel("RMS (uV)", fontsize=16, color=MY_RMS)
 
     ax.set_title(run_title(path), font="monospace", fontsize=16, loc="left")
+
+
+def plot_spectrogram(ax, path, channel_name):
+    raw = mne.io.read_raw_edf(path, preload=True, verbose="ERROR")
+    data_uv = raw.get_data() * 1e6
+
+    ch_name = find_channel(raw, channel_name)
+    ch_idx = raw.ch_names.index(ch_name)
+
+    freqs, times, power_db = compute_spectrogram_stft(
+        data_uv[ch_idx], raw.info["sfreq"],
+    )
+    ax.pcolormesh(times, freqs, power_db, cmap="inferno", shading="gouraud")
+    ax.set_ylabel(f"{channel_name} freq (Hz)", fontsize=16)
+    ax.set_title(run_title(path), font="monospace", fontsize=16, loc="left")
+
+    plot_event_brackets(ax, raw)
 
 
 def plot_montage(ax, path):
@@ -202,7 +278,10 @@ def main():
             layout="constrained",
         )
         for ax_row, path in zip(axes[:, 0], paths):
-            plot_run(ax_row, path, args.channel)
+            if (args.fourier):
+                plot_spectrogram(ax_row, path, args.channel)
+            else:
+                plot_run(ax_row, path, args.channel)
         axes[-1, 0].set_xlabel("time (s)", fontsize=16)
     else:
         fig, ax = plt.subplots(figsize=(14, 12), layout="constrained")
