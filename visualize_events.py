@@ -148,12 +148,13 @@ def plot_event_brackets(ax, raw):
             raw.annotations.onset,
             raw.annotations.duration,
             raw.annotations.description):
+        start = onset
+        end = onset + duration
+        print(f"duration of {description} is {duration:4f}")
         if (description == "T0"):
             continue
 
         color = EVENT_COLORS.get(description, "grey")
-        start = onset
-        end = onset + duration
         ax.plot(
             [start, end],
             [bracket_y, bracket_y],
@@ -210,6 +211,13 @@ def plot_spectrogram(ax, path, channel_name):
     freqs, times, power_db = compute_spectrogram_stft(
         data_uv[ch_idx], raw.info["sfreq"],
     )
+    print()
+#    print(freqs)
+#    print(times)
+#    print(power_db)
+#    print(freqs.shape)
+#    print(times.shape)
+#    print(power_db.shape)
     ax.pcolormesh(times, freqs, power_db, cmap="inferno", shading="gouraud")
     ax.set_ylabel(f"{channel_name} freq (Hz)", fontsize=16)
     ax.set_title(run_title(path), font="monospace", fontsize=16, loc="left")
