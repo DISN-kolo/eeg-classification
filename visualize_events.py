@@ -93,7 +93,7 @@ def parse_args():
 
 def run_number(path):
     match = FILENAME_RE.search(path.name)
-    if match is None:
+    if (match is None):
         return None
     else:
         return int(match.group(2))
