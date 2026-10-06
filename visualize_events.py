@@ -21,6 +21,7 @@ import mne
 import numpy as np
 
 from utils.fourier import compute_spectrogram_stft
+from utils.mne_stuff import find_channel
 
 
 # from .venv/lib/python3.13/site-packages/mne/datasets/eegbci/eegbci.py:
@@ -97,14 +98,6 @@ def run_number(path):
         return None
     else:
         return int(match.group(2))
-
-
-def find_channel(raw, name):
-    for ch_name in raw.ch_names:
-        if (ch_name.rstrip(".") == name or ch_name == name):
-            return ch_name
-
-    raise ValueError(f"channel {name!r} not found in {raw.ch_names}")
 
 
 def run_title(path):
@@ -211,13 +204,6 @@ def plot_spectrogram(ax, path, channel_name):
     freqs, times, power_db = compute_spectrogram_stft(
         data_uv[ch_idx], raw.info["sfreq"],
     )
-    print()
-#    print(freqs)
-#    print(times)
-#    print(power_db)
-#    print(freqs.shape)
-#    print(times.shape)
-#    print(power_db.shape)
     ax.pcolormesh(times, freqs, power_db, cmap="inferno", shading="gouraud")
     ax.set_ylabel(f"{channel_name} freq (Hz)", fontsize=16)
     ax.set_title(run_title(path), font="monospace", fontsize=16, loc="left")
