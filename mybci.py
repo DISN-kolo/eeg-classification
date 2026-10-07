@@ -40,17 +40,6 @@ def my_add_element(to_what: dict, where: str, what: np.ndarray):
 def main():
     args = parse_args()
     all_patient_paths = list(args.input_dir.iterdir())
-    #  get them into a cozy little table:
-    #       [ patient x                     ]
-    #       [ eyes open    ] [ eyes closed  ]
-    #       [lh][rh][2h][ft] [lh][rh][2h][ft]
-    #    1.  ##  ##  ##  ##   ##  ##  ##  ##
-    #    2.  ##  ##  ##  ##   ##  ##  ##  ##
-    #    3.  ##      ##  ##   ##  ##  ##  ##
-    #    4.  ##      ##       ##      ##  ##
-    #  maybe all this works better as tags?
-    #  get all of them into PCA, and display w/ colors
-    # corresponding to select tags or something
     tagged_entries = {}
     for patient_path in all_patient_paths:
         if (patient_path.is_dir()):
@@ -70,9 +59,9 @@ def main():
                     channel_i = raw.ch_names.index(channel_name)
                     voltage = raw.get_data()[channel_i]
                     sfreq = raw.info["sfreq"]
-                    print(f"experiment id: {exp_id}, "
-                          f"freq: {sfreq}"
-                          f"shape: {voltage.shape}")
+#                    print(f"experiment id: {exp_id}, "
+#                          f"freq: {sfreq}"
+#                          f"shape: {voltage.shape}")
                     freqs, times, power_db = compute_spectrogram_stft(
                         voltage,
                         sfreq,
@@ -85,8 +74,7 @@ def main():
                     elif (exp_id == 2):
                         # collect eyes closed background here
                         avg_power_per_freq[1] = power_db.mean(axis=-1)
-                    elif (exp_id in [3, 7, 11]):
-                        # eyes open, T1/T2 = lh/rh
+                    else:
                         for on, dur, des in zip(
                                 raw.annotations.onset,
                                 raw.annotations.duration,
@@ -98,26 +86,29 @@ def main():
                             start_i = np.searchsorted(times, start)
                             end_i = np.searchsorted(times, end)
                             image = power_db[:, start_i:end_i].copy()
-                            loc = patient_path.name + "_o_"
+                            if (image.shape[1] != 41):
+                                continue
+                            loc = patient_path.name
+                            if (exp_id in [3, 7, 11, 5, 9, 13]):
+                                loc += "_o_"
+                            else:
+                                loc += "_c_"
                             if (des == "T1"):
-                                loc += "lh"
-                            elif (des == "T2"):
-                                loc += "rh"
+                                if (exp_id in [3, 7, 11, 4, 6, 12]):
+                                    loc += "lh"
+                                else:
+                                    loc += "2h"
+                            else:
+                                if (exp_id in [3, 7, 11, 4, 6, 12]):
+                                    loc += "rh"
+                                else:
+                                    loc += "ft"
                             my_add_element(tagged_entries, loc, image)
-                    elif (exp_id in [5, 9, 13]):
-                        pass
-                        # eyes open, T1/T2 = 2h/ft
-                    elif (exp_id in [4, 6, 12]):
-                        pass
-                        # eyes closed, T1/T2 = lh/rh
-                    else:
-                        pass
-                        # eyes closed, T1/T2 = 2h/ft
-            print("finally, avg ppf bg for open eyes:")
-            print(avg_power_per_freq[0])
-            print("and closed:")
-            print(avg_power_per_freq[1])
-            print(tagged_entries)
+#            print("finally, avg ppf bg for open eyes:")
+#            print(avg_power_per_freq[0])
+#            print("and closed:")
+#            print(avg_power_per_freq[1])
+    print(tagged_entries)
 
 
 if (__name__=="__main__"):
