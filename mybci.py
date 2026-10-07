@@ -31,9 +31,27 @@ def parse_args():
     return args
 
 
+def my_add_element(to_what: dict, where: str, what: np.ndarray):
+    if (where not in to_what.keys()):
+        to_what[where] = [what]
+    else:
+        to_what[where].append(what)
+
 def main():
     args = parse_args()
     all_patient_paths = list(args.input_dir.iterdir())
+    #  get them into a cozy little table:
+    #       [ patient x                     ]
+    #       [ eyes open    ] [ eyes closed  ]
+    #       [lh][rh][2h][ft] [lh][rh][2h][ft]
+    #    1.  ##  ##  ##  ##   ##  ##  ##  ##
+    #    2.  ##  ##  ##  ##   ##  ##  ##  ##
+    #    3.  ##      ##  ##   ##  ##  ##  ##
+    #    4.  ##      ##       ##      ##  ##
+    #  maybe all this works better as tags?
+    #  get all of them into PCA, and display w/ colors
+    # corresponding to select tags or something
+    tagged_entries = {}
     for patient_path in all_patient_paths:
         if (patient_path.is_dir()):
             print(f"patient: {patient_path.name}")
@@ -55,19 +73,17 @@ def main():
                     print(f"experiment id: {exp_id}, "
                           f"freq: {sfreq}"
                           f"shape: {voltage.shape}")
+                    freqs, times, power_db = compute_spectrogram_stft(
+                        voltage,
+                        sfreq,
+                        window_seconds=1.0,
+                        overlap_ratio=0.9,
+                    )
                     if (exp_id == 1):
                         # collect eyes open background here
-                        freqs, times, power_db = compute_spectrogram_stft(
-                            voltage,
-                            sfreq
-                        )
                         avg_power_per_freq[0] = power_db.mean(axis=-1)
                     elif (exp_id == 2):
                         # collect eyes closed background here
-                        freqs, times, power_db = compute_spectrogram_stft(
-                            voltage,
-                            sfreq
-                        )
                         avg_power_per_freq[1] = power_db.mean(axis=-1)
                     elif (exp_id in [3, 7, 11]):
                         # eyes open, T1/T2 = lh/rh
@@ -79,27 +95,29 @@ def main():
                                 continue
                             start = on
                             end = on + dur
-                            # get them into a cozy little table:
-                            #      [ patient x                     ]
-                            #      [ eyes open    ] [ eyes closed  ]
-                            #      [lh][rh][2h][ft] [lh][rh][2h][ft]
-                            #   1.  ##  ##  ##  ##   ##  ##  ##  ##
-                            #   2.  ##  ##  ##  ##   ##  ##  ##  ##
-                            #   3.  ##      ##  ##   ##  ##  ##  ##
-                            #   4.  ##      ##       ##      ##  ##
-                            # maybe all this works better as tags?
-                            # get all of them into PCA, and display w/ colors
-                            #corresponding to select tags or something
+                            start_i = np.searchsorted(times, start)
+                            end_i = np.searchsorted(times, end)
+                            image = power_db[:, start_i:end_i].copy()
+                            loc = patient_path.name + "_o_"
+                            if (des == "T1"):
+                                loc += "lh"
+                            elif (des == "T2"):
+                                loc += "rh"
+                            my_add_element(tagged_entries, loc, image)
                     elif (exp_id in [5, 9, 13]):
+                        pass
                         # eyes open, T1/T2 = 2h/ft
                     elif (exp_id in [4, 6, 12]):
+                        pass
                         # eyes closed, T1/T2 = lh/rh
                     else:
+                        pass
                         # eyes closed, T1/T2 = 2h/ft
             print("finally, avg ppf bg for open eyes:")
             print(avg_power_per_freq[0])
             print("and closed:")
             print(avg_power_per_freq[1])
+            print(tagged_entries)
 
 
 if (__name__=="__main__"):

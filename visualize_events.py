@@ -17,6 +17,7 @@ import re
 
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
+from matplotlib.ticker import MultipleLocator
 import mne
 import numpy as np
 
@@ -183,6 +184,11 @@ def plot_run(ax, path, channel_name):
 
     ch_name = find_channel(raw, channel_name)
     ch_idx = raw.ch_names.index(ch_name)
+    ax.xaxis.set_major_locator(MultipleLocator(1.0))
+    ax.xaxis.set_minor_locator(MultipleLocator(0.5))
+    ax.yaxis.set_major_locator(MultipleLocator(10.0))
+    ax.set_axisbelow(False)
+    ax.grid(True, which="both", color="white", alpha=0.3, linewidth=0.6)
     ax.plot(times, data_uv[ch_idx], color="#101010", linewidth=0.6)
     ax.set_ylabel(f"{channel_name} (uV)", fontsize=16)
 
@@ -202,11 +208,19 @@ def plot_spectrogram(ax, path, channel_name):
     ch_idx = raw.ch_names.index(ch_name)
 
     freqs, times, power_db = compute_spectrogram_stft(
-        data_uv[ch_idx], raw.info["sfreq"],
+        data_uv[ch_idx],
+        raw.info["sfreq"],
+        window_seconds=1.0,
+        overlap_ratio=0.9,
     )
-    ax.pcolormesh(times, freqs, power_db, cmap="inferno", shading="gouraud")
+    ax.pcolormesh(times, freqs, power_db, cmap="inferno", shading="nearest")
     ax.set_ylabel(f"{channel_name} freq (Hz)", fontsize=16)
     ax.set_title(run_title(path), font="monospace", fontsize=16, loc="left")
+    ax.xaxis.set_major_locator(MultipleLocator(1.0))
+    ax.xaxis.set_minor_locator(MultipleLocator(0.5))
+    ax.yaxis.set_major_locator(MultipleLocator(10.0))
+    ax.set_axisbelow(False)
+    ax.grid(True, which="both", color="white", alpha=0.3, linewidth=0.6)
 
     plot_event_brackets(ax, raw)
 
