@@ -42,6 +42,9 @@ def main():
     all_patient_paths = list(args.input_dir.iterdir())
     tagged_entries = {}
     for patient_path in all_patient_paths:
+        ctr += 1
+        if (args.lctr > args.limiter):
+            break
         if (patient_path.is_dir()):
             print(f"patient: {patient_path.name}")
             local_file_paths = list(patient_path.iterdir())
@@ -103,7 +106,11 @@ def main():
                                     loc += "rh"
                                 else:
                                     loc += "ft"
-                            my_add_element(tagged_entries, loc, image)
+                            my_add_element(
+                                tagged_entries,
+                                loc,
+                                image.flatten()
+                            )
 #            print("finally, avg ppf bg for open eyes:")
 #            print(avg_power_per_freq[0])
 #            print("and closed:")
