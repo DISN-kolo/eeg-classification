@@ -119,7 +119,6 @@ def main():
                                 loc,
                                 image.flatten()
                             )
-    print(tagged_entries)
     X = []
     labels = []
     for key, item in zip(tagged_entries.keys(), tagged_entries.values()):
@@ -127,8 +126,13 @@ def main():
         X.append(vs)
         labels.extend([key] * vs.shape[0])
     X = np.vstack(X)
-    print(X)
-    print(labels)
+    Xmean = X.mean(axis=0)
+    X -= Xmean
+    U, S, VT = np.linalg.svd(X/np.sqrt(len(X)), full_matrices=0)
+    print(U)
+    print(S)
+    print(VT)
+
 
 
 if (__name__=="__main__"):
