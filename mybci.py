@@ -26,6 +26,10 @@ def parse_args():
              "afterwards (in the original dataset repeated 2 more times "
              "until R14)"
     )
+    parser.add_argument(
+        "-c", "--count", type=int,
+        help="Max patient count to go thru. Debug purposes"
+    )
     args = parser.parse_args()
 
     return args
@@ -40,13 +44,20 @@ def my_add_element(to_what: dict, where: str, what: np.ndarray):
 def main():
     args = parse_args()
     all_patient_paths = list(args.input_dir.iterdir())
+    amt = len(all_patient_paths)
+    if (args.count is not None and args.count < amt):
+        amt = args.count
     tagged_entries = {}
+    # TODO rm the ctr?
+    ctr = 0
     for patient_path in all_patient_paths:
-        ctr += 1
-        if (args.lctr > args.limiter):
-            break
         if (patient_path.is_dir()):
+            ctr += 1
+            if (args.count is not None):
+                if (ctr > args.count):
+                    break
             print(f"patient: {patient_path.name}")
+            print(f"    cty: {ctr:3d}/{amt}...")
             local_file_paths = list(patient_path.iterdir())
             avg_power_per_freq = [[], []]
             for local_file_path in local_file_paths:
@@ -62,9 +73,6 @@ def main():
                     channel_i = raw.ch_names.index(channel_name)
                     voltage = raw.get_data()[channel_i]
                     sfreq = raw.info["sfreq"]
-#                    print(f"experiment id: {exp_id}, "
-#                          f"freq: {sfreq}"
-#                          f"shape: {voltage.shape}")
                     freqs, times, power_db = compute_spectrogram_stft(
                         voltage,
                         sfreq,
@@ -111,11 +119,16 @@ def main():
                                 loc,
                                 image.flatten()
                             )
-#            print("finally, avg ppf bg for open eyes:")
-#            print(avg_power_per_freq[0])
-#            print("and closed:")
-#            print(avg_power_per_freq[1])
     print(tagged_entries)
+    X = []
+    labels = []
+    for key, item in zip(tagged_entries.keys(), tagged_entries.values()):
+        vs = np.vstack(item)
+        X.append(vs)
+        labels.extend([key] * vs.shape[0])
+    X = np.vstack(X)
+    print(X)
+    print(labels)
 
 
 if (__name__=="__main__"):
