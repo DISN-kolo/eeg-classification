@@ -219,3 +219,5 @@ __marimo__/
 
 # vim tags
 tags
+tags.lock
+tags.temp
